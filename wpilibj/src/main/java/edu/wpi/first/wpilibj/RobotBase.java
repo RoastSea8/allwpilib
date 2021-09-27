@@ -161,6 +161,15 @@ public abstract class RobotBase implements AutoCloseable {
   public void close() {}
 
   /**
+   * Get the current runtime type.
+   *
+   * @return Current runtime type.
+   */
+  public static RuntimeType getRuntimeType() {
+    return RuntimeType.getValue(HALUtil.getHALRuntimeType());
+  }
+
+  /**
    * Get if the robot is a simulation.
    *
    * @return If the robot is running in simulation.
@@ -175,7 +184,8 @@ public abstract class RobotBase implements AutoCloseable {
    * @return If the robot is running in the real world.
    */
   public static boolean isReal() {
-    return HALUtil.getHALRuntimeType() == 0;
+    RuntimeType runtimeType = getRuntimeType();
+    return runtimeType == RuntimeType.kRoboRIO || runtimeType == RuntimeType.kRoboRIO2;
   }
 
   /**
@@ -338,20 +348,20 @@ public abstract class RobotBase implements AutoCloseable {
     m_runMutex.unlock();
 
     if (isReal()) {
+      final File file = new File("/tmp/frc_versions/FRC_Lib_Version.ini");
       try {
-        final File file = new File("/tmp/frc_versions/FRC_Lib_Version.ini");
-
-        if (file.exists()) {
-          file.delete();
+        if (file.exists() && !file.delete()) {
+          throw new IOException("Failed to delete FRC_Lib_Version.ini");
         }
 
-        file.createNewFile();
+        if (!file.createNewFile()) {
+          throw new IOException("Failed to create new FRC_Lib_Version.ini");
+        }
 
         try (OutputStream output = Files.newOutputStream(file.toPath())) {
           output.write("Java ".getBytes(StandardCharsets.UTF_8));
           output.write(WPILibVersion.Version.getBytes(StandardCharsets.UTF_8));
         }
-
       } catch (IOException ex) {
         DriverStation.reportError(
             "Could not write FRC_Lib_Version.ini: " + ex.toString(), ex.getStackTrace());

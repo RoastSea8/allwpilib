@@ -8,7 +8,6 @@
 
 #include "frc/Encoder.h"
 #include "frc/RobotController.h"
-#include "frc/StateSpaceUtil.h"
 #include "frc/controller/PIDController.h"
 #include "frc/motorcontrol/PWMVictorSPX.h"
 #include "frc/simulation/ElevatorSim.h"
@@ -18,7 +17,7 @@
 #include "frc/system/plant/LinearSystemId.h"
 #include "gtest/gtest.h"
 
-TEST(ElevatorSim, StateSpaceSim) {
+TEST(ElevatorSimTest, StateSpaceSim) {
   frc::sim::ElevatorSim sim(frc::DCMotor::Vex775Pro(4), 14.67, 8_kg,
                             units::meter_t(0.75 * 25.4 / 1000.0), 0_m, 3_m,
                             {0.01});
@@ -33,8 +32,8 @@ TEST(ElevatorSim, StateSpaceSim) {
     auto nextVoltage = controller.Calculate(encoderSim.GetDistance());
     motor.Set(nextVoltage / frc::RobotController::GetInputVoltage());
 
-    auto u = frc::MakeMatrix<1, 1>(motor.Get() *
-                                   frc::RobotController::GetInputVoltage());
+    Eigen::Vector<double, 1> u{motor.Get() *
+                               frc::RobotController::GetInputVoltage()};
     sim.SetInput(u);
     sim.Update(20_ms);
 
@@ -45,12 +44,12 @@ TEST(ElevatorSim, StateSpaceSim) {
   EXPECT_NEAR(controller.GetSetpoint(), sim.GetPosition().to<double>(), 0.2);
 }
 
-TEST(ElevatorSim, MinMax) {
+TEST(ElevatorSimTest, MinMax) {
   frc::sim::ElevatorSim sim(frc::DCMotor::Vex775Pro(4), 14.67, 8_kg,
                             units::meter_t(0.75 * 25.4 / 1000.0), 0_m, 1_m,
                             {0.01});
   for (size_t i = 0; i < 100; ++i) {
-    sim.SetInput(frc::MakeMatrix<1, 1>(0.0));
+    sim.SetInput(Eigen::Vector<double, 1>{0.0});
     sim.Update(20_ms);
 
     auto height = sim.GetPosition();
@@ -58,7 +57,7 @@ TEST(ElevatorSim, MinMax) {
   }
 
   for (size_t i = 0; i < 100; ++i) {
-    sim.SetInput(frc::MakeMatrix<1, 1>(12.0));
+    sim.SetInput(Eigen::Vector<double, 1>{12.0});
     sim.Update(20_ms);
 
     auto height = sim.GetPosition();
@@ -66,7 +65,7 @@ TEST(ElevatorSim, MinMax) {
   }
 }
 
-TEST(ElevatorSim, Stability) {
+TEST(ElevatorSimTest, Stability) {
   static constexpr double kElevatorGearing = 100.0;
   static constexpr units::meter_t kElevatorDrumRadius = 0.5_in;
   static constexpr units::kilogram_t kCarriageMass = 4.0_kg;
@@ -75,14 +74,14 @@ TEST(ElevatorSim, Stability) {
   frc::LinearSystem<2, 1, 1> system = frc::LinearSystemId::ElevatorSystem(
       m_elevatorGearbox, kCarriageMass, kElevatorDrumRadius, kElevatorGearing);
 
-  Eigen::Matrix<double, 2, 1> x0 = frc::MakeMatrix<2, 1>(0.0, 0.0);
-  Eigen::Matrix<double, 1, 1> u0 = frc::MakeMatrix<1, 1>(12.0);
+  Eigen::Vector<double, 2> x0{0.0, 0.0};
+  Eigen::Vector<double, 1> u0{12.0};
 
-  Eigen::Matrix<double, 2, 1> x1 = frc::MakeMatrix<2, 1>(0.0, 0.0);
+  Eigen::Vector<double, 2> x1{0.0, 0.0};
   for (size_t i = 0; i < 50; i++) {
     x1 = frc::RKDP(
-        [&](Eigen::Matrix<double, 2, 1> x,
-            Eigen::Matrix<double, 1, 1> u) -> Eigen::Matrix<double, 2, 1> {
+        [&](const Eigen::Vector<double, 2>& x,
+            const Eigen::Vector<double, 1>& u) -> Eigen::Vector<double, 2> {
           return system.A() * x + system.B() * u;
         },
         x1, u0, 0.020_s);

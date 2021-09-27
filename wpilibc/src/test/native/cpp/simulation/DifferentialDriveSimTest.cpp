@@ -17,7 +17,7 @@
 #include "frc/trajectory/constraint/DifferentialDriveKinematicsConstraint.h"
 #include "gtest/gtest.h"
 
-TEST(DifferentialDriveSim, Convergence) {
+TEST(DifferentialDriveSimTest, Convergence) {
   auto motor = frc::DCMotor::NEO(2);
   auto plant = frc::LinearSystemId::DrivetrainVelocitySystem(
       motor, 50_kg, 2_in, 12_in, 0.5_kg_sq_m, 1.0);
@@ -30,11 +30,10 @@ TEST(DifferentialDriveSim, Convergence) {
   frc::LinearPlantInversionFeedforward feedforward{plant, 20_ms};
   frc::RamseteController ramsete;
 
-  feedforward.Reset(frc::MakeMatrix<2, 1>(0.0, 0.0));
+  feedforward.Reset(Eigen::Vector<double, 2>{0.0, 0.0});
 
   // Ground truth.
-  Eigen::Matrix<double, 7, 1> groundTruthX =
-      Eigen::Matrix<double, 7, 1>::Zero();
+  Eigen::Vector<double, 7> groundTruthX = Eigen::Vector<double, 7>::Zero();
 
   frc::TrajectoryConfig config{1_mps, 1_mps_sq};
   config.AddConstraint(
@@ -50,7 +49,7 @@ TEST(DifferentialDriveSim, Convergence) {
 
     auto [l, r] = kinematics.ToWheelSpeeds(ramseteOut);
     auto voltages = feedforward.Calculate(
-        frc::MakeMatrix<2, 1>(l.to<double>(), r.to<double>()));
+        Eigen::Vector<double, 2>{l.to<double>(), r.to<double>()});
 
     // Sim periodic code.
     sim.SetInputs(units::volt_t(voltages(0, 0)), units::volt_t(voltages(1, 0)));
@@ -58,19 +57,21 @@ TEST(DifferentialDriveSim, Convergence) {
 
     // Update ground truth.
     groundTruthX = frc::RK4(
-        [&sim](const auto& x, const auto& u) -> Eigen::Matrix<double, 7, 1> {
+        [&sim](const auto& x, const auto& u) -> Eigen::Vector<double, 7> {
           return sim.Dynamics(x, u);
         },
         groundTruthX, voltages, 20_ms);
   }
 
-  EXPECT_NEAR(groundTruthX(0, 0), sim.GetPose().X().to<double>(), 0.01);
-  EXPECT_NEAR(groundTruthX(1, 0), sim.GetPose().Y().to<double>(), 0.01);
+  // 2 inch tolerance is OK since our ground truth is an approximation of the
+  // ODE solution using RK4 anyway
+  EXPECT_NEAR(groundTruthX(0, 0), sim.GetPose().X().to<double>(), 0.05);
+  EXPECT_NEAR(groundTruthX(1, 0), sim.GetPose().Y().to<double>(), 0.05);
   EXPECT_NEAR(groundTruthX(2, 0), sim.GetHeading().Radians().to<double>(),
               0.01);
 }
 
-TEST(DifferentialDriveSim, Current) {
+TEST(DifferentialDriveSimTest, Current) {
   auto motor = frc::DCMotor::NEO(2);
   auto plant = frc::LinearSystemId::DrivetrainVelocitySystem(
       motor, 50_kg, 2_in, 12_in, 0.5_kg_sq_m, 1.0);
@@ -97,7 +98,7 @@ TEST(DifferentialDriveSim, Current) {
   EXPECT_TRUE(sim.GetCurrentDraw() > 0_A);
 }
 
-TEST(DifferentialDriveSim, ModelStability) {
+TEST(DifferentialDriveSimTest, ModelStability) {
   auto motor = frc::DCMotor::NEO(2);
   auto plant = frc::LinearSystemId::DrivetrainVelocitySystem(
       motor, 50_kg, 2_in, 12_in, 2_kg_sq_m, 5.0);

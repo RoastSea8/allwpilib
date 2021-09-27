@@ -24,7 +24,7 @@
 #include "frc/system/plant/LinearSystemId.h"
 #include "gtest/gtest.h"
 
-TEST(StateSpaceSimTest, TestFlywheelSim) {
+TEST(StateSpaceSimTest, FlywheelSim) {
   const frc::LinearSystem<1, 1, 1> plant =
       frc::LinearSystemId::IdentifyVelocitySystem<units::radian>(
           0.02_V / 1_rad_per_s, 0.01_V / 1_rad_per_s_sq);
@@ -48,8 +48,8 @@ TEST(StateSpaceSimTest, TestFlywheelSim) {
     // Then, SimulationPeriodic runs
     frc::sim::RoboRioSim::SetVInVoltage(
         frc::sim::BatterySim::Calculate({sim.GetCurrentDraw()}));
-    sim.SetInput(frc::MakeMatrix<1, 1>(
-        motor.Get() * frc::RobotController::GetInputVoltage()));
+    sim.SetInput(Eigen::Vector<double, 1>{
+        motor.Get() * frc::RobotController::GetInputVoltage()});
     sim.Update(20_ms);
     encoderSim.SetRate(sim.GetAngularVelocity().to<double>());
   }

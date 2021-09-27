@@ -219,12 +219,12 @@ class LinearFilter {
     }
 
     // Fill in Kronecker deltas: https://en.wikipedia.org/wiki/Kronecker_delta
-    Eigen::Matrix<double, Samples, 1> d;
+    Eigen::Vector<double, Samples> d;
     for (int i = 0; i < Samples; ++i) {
       d(i) = (i == Derivative) ? Factorial(Derivative) : 0.0;
     }
 
-    Eigen::Matrix<double, Samples, 1> a =
+    Eigen::Vector<double, Samples> a =
         S.householderQr().solve(d) / std::pow(period.to<double>(), Derivative);
 
     // Reverse gains list
@@ -286,7 +286,7 @@ class LinearFilter {
    *
    * @param n Argument of which to take factorial.
    */
-  static int Factorial(int n) {
+  static constexpr int Factorial(int n) {
     if (n < 2) {
       return 1;
     } else {

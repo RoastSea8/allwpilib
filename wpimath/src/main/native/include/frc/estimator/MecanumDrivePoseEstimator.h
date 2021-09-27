@@ -6,6 +6,7 @@
 
 #include <functional>
 
+#include <wpi/SymbolExports.h>
 #include <wpi/array.h>
 
 #include "Eigen/Core"
@@ -42,7 +43,7 @@ namespace frc {
  * coords from vision, or <strong> y = [[theta]]ᵀ
  * </strong> from the gyro.
  */
-class MecanumDrivePoseEstimator {
+class WPILIB_DLLEXPORT MecanumDrivePoseEstimator {
  public:
   /**
    * Constructs a MecanumDrivePoseEstimator.
@@ -204,8 +205,8 @@ class MecanumDrivePoseEstimator {
   MecanumDriveKinematics m_kinematics;
   KalmanFilterLatencyCompensator<3, 3, 1, UnscentedKalmanFilter<3, 3, 1>>
       m_latencyCompensator;
-  std::function<void(const Eigen::Matrix<double, 3, 1>& u,
-                     const Eigen::Matrix<double, 3, 1>& y)>
+  std::function<void(const Eigen::Vector<double, 3>& u,
+                     const Eigen::Vector<double, 3>& y)>
       m_visionCorrect;
 
   Eigen::Matrix3d m_visionContR;
@@ -218,7 +219,7 @@ class MecanumDrivePoseEstimator {
 
   template <int Dim>
   static wpi::array<double, Dim> StdDevMatrixToArray(
-      const Eigen::Matrix<double, Dim, 1>& vector) {
+      const Eigen::Vector<double, Dim>& vector) {
     wpi::array<double, Dim> array;
     for (size_t i = 0; i < Dim; ++i) {
       array[i] = vector(i);

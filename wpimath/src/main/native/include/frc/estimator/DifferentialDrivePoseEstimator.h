@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <wpi/SymbolExports.h>
 #include <wpi/array.h>
 
 #include "Eigen/Core"
@@ -44,7 +45,7 @@ namespace frc {
  * <strong>y = [[x, y, theta]]ᵀ </strong> from vision,
  * or <strong>y = [[dist_l, dist_r, theta]] </strong> from encoders and gyro.
  */
-class DifferentialDrivePoseEstimator {
+class WPILIB_DLLEXPORT DifferentialDrivePoseEstimator {
  public:
   /**
    * Constructs a DifferentialDrivePoseEstimator.
@@ -208,8 +209,8 @@ class DifferentialDrivePoseEstimator {
   UnscentedKalmanFilter<5, 3, 3> m_observer;
   KalmanFilterLatencyCompensator<5, 3, 3, UnscentedKalmanFilter<5, 3, 3>>
       m_latencyCompensator;
-  std::function<void(const Eigen::Matrix<double, 3, 1>& u,
-                     const Eigen::Matrix<double, 3, 1>& y)>
+  std::function<void(const Eigen::Vector<double, 3>& u,
+                     const Eigen::Vector<double, 3>& y)>
       m_visionCorrect;
 
   Eigen::Matrix<double, 3, 3> m_visionContR;
@@ -222,13 +223,13 @@ class DifferentialDrivePoseEstimator {
 
   template <int Dim>
   static wpi::array<double, Dim> StdDevMatrixToArray(
-      const Eigen::Matrix<double, Dim, 1>& stdDevs);
+      const Eigen::Vector<double, Dim>& stdDevs);
 
-  static Eigen::Matrix<double, 5, 1> F(const Eigen::Matrix<double, 5, 1>& x,
-                                       const Eigen::Matrix<double, 3, 1>& u);
-  static Eigen::Matrix<double, 5, 1> FillStateVector(
-      const Pose2d& pose, units::meter_t leftDistance,
-      units::meter_t rightDistance);
+  static Eigen::Vector<double, 5> F(const Eigen::Vector<double, 5>& x,
+                                    const Eigen::Vector<double, 3>& u);
+  static Eigen::Vector<double, 5> FillStateVector(const Pose2d& pose,
+                                                  units::meter_t leftDistance,
+                                                  units::meter_t rightDistance);
 };
 
 }  // namespace frc

@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <frc/PneumaticsControlModule.h>
 #include <frc/TimedRobot.h>
 #include <frc/commands/Command.h>
 #include <frc/smartdashboard/SendableChooser.h>
@@ -13,14 +12,14 @@
 #include "commands/DriveAndShootAutonomous.h"
 #include "commands/DriveForward.h"
 #include "subsystems/Collector.h"
-#include "subsystems/DriveTrain.h"
+#include "subsystems/Drivetrain.h"
 #include "subsystems/Pivot.h"
 #include "subsystems/Pneumatics.h"
 #include "subsystems/Shooter.h"
 
 class Robot : public frc::TimedRobot {
  public:
-  static DriveTrain drivetrain;
+  static Drivetrain drivetrain;
   static Pivot pivot;
   static Collector collector;
   static Shooter shooter;

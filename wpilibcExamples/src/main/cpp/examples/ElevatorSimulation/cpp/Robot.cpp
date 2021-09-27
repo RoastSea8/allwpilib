@@ -13,8 +13,15 @@
 #include <frc/simulation/ElevatorSim.h>
 #include <frc/simulation/EncoderSim.h>
 #include <frc/simulation/RoboRioSim.h>
+#include <frc/smartdashboard/Mechanism2d.h>
+#include <frc/smartdashboard/MechanismLigament2d.h>
+#include <frc/smartdashboard/MechanismRoot2d.h>
+#include <frc/smartdashboard/SmartDashboard.h>
 #include <frc/system/plant/LinearSystemId.h>
+#include <frc/util/Color.h>
+#include <frc/util/Color8Bit.h>
 #include <units/angle.h>
+#include <units/length.h>
 #include <units/moment_of_inertia.h>
 #include <wpi/numbers>
 
@@ -33,7 +40,7 @@ class Robot : public frc::TimedRobot {
   static constexpr units::meter_t kElevatorDrumRadius = 2_in;
   static constexpr units::kilogram_t kCarriageMass = 4.0_kg;
 
-  static constexpr units::meter_t kMinElevatorHeight = 0_in;
+  static constexpr units::meter_t kMinElevatorHeight = 2_in;
   static constexpr units::meter_t kMaxElevatorHeight = 50_in;
 
   // distance per pulse = (distance per revolution) / (pulses per revolution)
@@ -60,16 +67,28 @@ class Robot : public frc::TimedRobot {
                                       {0.01}};
   frc::sim::EncoderSim m_encoderSim{m_encoder};
 
+  // Create a Mechanism2d display of an elevator
+  frc::Mechanism2d m_mech2d{20, 50};
+  frc::MechanismRoot2d* m_elevatorRoot =
+      m_mech2d.GetRoot("Elevator Root", 10, 0);
+  frc::MechanismLigament2d* m_elevatorMech2d =
+      m_elevatorRoot->Append<frc::MechanismLigament2d>(
+          "Elevator", units::inch_t(m_elevatorSim.GetPosition()).to<double>(),
+          90_deg);
+
  public:
   void RobotInit() override {
     m_encoder.SetDistancePerPulse(kArmEncoderDistPerPulse);
+
+    // Put Mechanism 2d to SmartDashboard
+    frc::SmartDashboard::PutData("Elevator Sim", &m_mech2d);
   }
 
   void SimulationPeriodic() override {
     // In this method, we update our simulation of what our elevator is doing
     // First, we set our "inputs" (voltages)
-    m_elevatorSim.SetInput(frc::MakeMatrix<1, 1>(
-        m_motor.Get() * frc::RobotController::GetInputVoltage()));
+    m_elevatorSim.SetInput(Eigen::Vector<double, 1>{
+        m_motor.Get() * frc::RobotController::GetInputVoltage()});
 
     // Next, we update it. The standard loop time is 20ms.
     m_elevatorSim.Update(20_ms);
@@ -80,13 +99,17 @@ class Robot : public frc::TimedRobot {
     // SimBattery estimates loaded battery voltages
     frc::sim::RoboRioSim::SetVInVoltage(
         frc::sim::BatterySim::Calculate({m_elevatorSim.GetCurrentDraw()}));
+
+    // Update the Elevator length based on the simulated elevator height
+    m_elevatorMech2d->SetLength(
+        units::inch_t(m_elevatorSim.GetPosition()).to<double>());
   }
 
   void TeleopPeriodic() override {
     if (m_joystick.GetTrigger()) {
       // Here, we run PID control like normal, with a constant setpoint of 30in.
-      double pidOutput =
-          m_controller.Calculate(m_encoder.GetDistance(), (30_in).to<double>());
+      double pidOutput = m_controller.Calculate(
+          m_encoder.GetDistance(), units::meter_t(30_in).to<double>());
       m_motor.SetVoltage(units::volt_t(pidOutput));
     } else {
       // Otherwise, we disable the motor.

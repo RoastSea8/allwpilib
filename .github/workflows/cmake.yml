@@ -10,7 +10,7 @@ jobs:
         include:
           - os: ubuntu-latest
             name: Linux
-            container: wpilib/roborio-cross-ubuntu:2021-18.04
+            container: wpilib/roborio-cross-ubuntu:2022-20.04
             flags: ""
           - os: macos-latest
             name: macOS
@@ -26,14 +26,20 @@ jobs:
           if [ "$RUNNER_OS" == "macOS" ]; then
             brew install opencv
           fi
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install jinja
+        run: python -m pip install jinja2
       - name: configure
         run: mkdir build && cd build && cmake ${{ matrix.flags }} ..
       - name: build
         working-directory: build
-        run: make -j3
+        run: cmake --build . -j$(nproc)
       - name: test
         working-directory: build
-        run: make test
+        run: ctest --output-on-failure
 
   build-vcpkg:
     name: "Build - Windows"
@@ -55,5 +61,5 @@ jobs:
           cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
           useVcpkgToolchainFile: true
       - name: Run Tests
-        run: ctest -C "Debug"
+        run: ctest -C "Debug" --output-on-failure
         working-directory: ${{ runner.workspace }}/build

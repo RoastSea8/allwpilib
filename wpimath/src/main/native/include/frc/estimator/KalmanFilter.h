@@ -6,10 +6,11 @@
 
 #include <cmath>
 
+#include <wpi/SymbolExports.h>
 #include <wpi/array.h>
 
+#include "Eigen/Cholesky"
 #include "Eigen/Core"
-#include "Eigen/src/Cholesky/LDLT.h"
 #include "drake/math/discrete_algebraic_riccati_equation.h"
 #include "frc/StateSpaceUtil.h"
 #include "frc/system/Discretization.h"
@@ -117,7 +118,7 @@ class KalmanFilterImpl {
   /**
    * Returns the state estimate x-hat.
    */
-  const Eigen::Matrix<double, States, 1>& Xhat() const { return m_xHat; }
+  const Eigen::Vector<double, States>& Xhat() const { return m_xHat; }
 
   /**
    * Returns an element of the state estimate x-hat.
@@ -131,7 +132,7 @@ class KalmanFilterImpl {
    *
    * @param xHat The state estimate x-hat.
    */
-  void SetXhat(const Eigen::Matrix<double, States, 1>& xHat) { m_xHat = xHat; }
+  void SetXhat(const Eigen::Vector<double, States>& xHat) { m_xHat = xHat; }
 
   /**
    * Set an element of the initial state estimate x-hat.
@@ -152,7 +153,7 @@ class KalmanFilterImpl {
    * @param u  New control input from controller.
    * @param dt Timestep for prediction.
    */
-  void Predict(const Eigen::Matrix<double, Inputs, 1>& u, units::second_t dt) {
+  void Predict(const Eigen::Vector<double, Inputs>& u, units::second_t dt) {
     m_xHat = m_plant->CalculateX(m_xHat, u, dt);
   }
 
@@ -162,8 +163,8 @@ class KalmanFilterImpl {
    * @param u Same control input used in the last predict step.
    * @param y Measurement vector.
    */
-  void Correct(const Eigen::Matrix<double, Inputs, 1>& u,
-               const Eigen::Matrix<double, Outputs, 1>& y) {
+  void Correct(const Eigen::Vector<double, Inputs>& u,
+               const Eigen::Vector<double, Outputs>& y) {
     // x̂ₖ₊₁⁺ = x̂ₖ₊₁⁻ + K(y − (Cx̂ₖ₊₁⁻ + Duₖ₊₁))
     m_xHat += m_K * (y - (m_plant->C() * m_xHat + m_plant->D() * u));
   }
@@ -179,7 +180,7 @@ class KalmanFilterImpl {
   /**
    * The state estimate.
    */
-  Eigen::Matrix<double, States, 1> m_xHat;
+  Eigen::Vector<double, States> m_xHat;
 };
 
 }  // namespace detail
@@ -209,7 +210,8 @@ class KalmanFilter : public detail::KalmanFilterImpl<States, Inputs, Outputs> {
 // Template specializations are used here to make common state-input-output
 // triplets compile faster.
 template <>
-class KalmanFilter<1, 1, 1> : public detail::KalmanFilterImpl<1, 1, 1> {
+class WPILIB_DLLEXPORT KalmanFilter<1, 1, 1>
+    : public detail::KalmanFilterImpl<1, 1, 1> {
  public:
   KalmanFilter(LinearSystem<1, 1, 1>& plant,
                const wpi::array<double, 1>& stateStdDevs,
@@ -223,7 +225,8 @@ class KalmanFilter<1, 1, 1> : public detail::KalmanFilterImpl<1, 1, 1> {
 // Template specializations are used here to make common state-input-output
 // triplets compile faster.
 template <>
-class KalmanFilter<2, 1, 1> : public detail::KalmanFilterImpl<2, 1, 1> {
+class WPILIB_DLLEXPORT KalmanFilter<2, 1, 1>
+    : public detail::KalmanFilterImpl<2, 1, 1> {
  public:
   KalmanFilter(LinearSystem<2, 1, 1>& plant,
                const wpi::array<double, 2>& stateStdDevs,
