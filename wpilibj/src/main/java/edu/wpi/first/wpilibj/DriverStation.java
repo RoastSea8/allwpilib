@@ -1107,6 +1107,7 @@ public class DriverStation {
       return true;
     } catch (InterruptedException ex) {
       // return false on a thread interrupt
+      Thread.currentThread().interrupt();
       return false;
     } finally {
       m_waitForDataMutex.unlock();
@@ -1321,6 +1322,18 @@ public class DriverStation {
       if (m_userInTest) {
         HAL.observeUserProgramTest();
       }
+    }
+  }
+
+  /**
+   * Forces a control word cache update, and update the passed in control word.
+   *
+   * @param word Word to update.
+   */
+  public static void updateControlWordFromCache(ControlWord word) {
+    synchronized (m_controlWordMutex) {
+      updateControlWord(true);
+      word.update(m_controlWordCache);
     }
   }
 

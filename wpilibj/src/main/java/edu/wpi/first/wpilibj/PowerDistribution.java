@@ -6,7 +6,10 @@ package edu.wpi.first.wpilibj;
 
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.hal.PowerDistributionFaults;
 import edu.wpi.first.hal.PowerDistributionJNI;
+import edu.wpi.first.hal.PowerDistributionStickyFaults;
+import edu.wpi.first.hal.PowerDistributionVersion;
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
 import edu.wpi.first.util.sendable.SendableRegistry;
@@ -22,7 +25,6 @@ public class PowerDistribution implements Sendable, AutoCloseable {
   public static final int kDefaultModule = PowerDistributionJNI.DEFAULT_MODULE;
 
   public enum ModuleType {
-    kAutomatic(PowerDistributionJNI.AUTOMATIC_TYPE),
     kCTRE(PowerDistributionJNI.CTRE_TYPE),
     kRev(PowerDistributionJNI.REV_TYPE);
 
@@ -37,7 +39,7 @@ public class PowerDistribution implements Sendable, AutoCloseable {
    * Constructs a PowerDistribution.
    *
    * @param module The CAN ID of the PDP.
-   * @param moduleType Module type (automatic, CTRE, or REV).
+   * @param moduleType Module type (CTRE or REV).
    */
   public PowerDistribution(int module, ModuleType moduleType) {
     m_handle = PowerDistributionJNI.initialize(module, moduleType.value);
@@ -50,10 +52,14 @@ public class PowerDistribution implements Sendable, AutoCloseable {
   /**
    * Constructs a PowerDistribution.
    *
-   * <p>Uses the default CAN ID.
+   * <p>Uses the default CAN ID (0 for CTRE and 1 for REV).
    */
   public PowerDistribution() {
-    this(kDefaultModule, ModuleType.kAutomatic);
+    m_handle = PowerDistributionJNI.initialize(kDefaultModule, PowerDistributionJNI.AUTOMATIC_TYPE);
+    m_module = PowerDistributionJNI.getModuleNumber(m_handle);
+
+    HAL.report(tResourceType.kResourceType_PDP, m_module + 1);
+    SendableRegistry.addLW(this, "PowerDistribution", m_module);
   }
 
   @Override
@@ -154,17 +160,34 @@ public class PowerDistribution implements Sendable, AutoCloseable {
     PowerDistributionJNI.setSwitchableChannel(m_handle, enabled);
   }
 
+  PowerDistributionVersion getVersion() {
+    return PowerDistributionJNI.getVersion(m_handle);
+  }
+
+  PowerDistributionFaults getFaults() {
+    return PowerDistributionJNI.getFaults(m_handle);
+  }
+
+  PowerDistributionStickyFaults getStickyFaults() {
+    return PowerDistributionJNI.getStickyFaults(m_handle);
+  }
+
   @Override
   public void initSendable(SendableBuilder builder) {
     builder.setSmartDashboardType("PowerDistribution");
     int numChannels = getNumChannels();
     for (int i = 0; i < numChannels; ++i) {
       final int chan = i;
-      builder.addDoubleProperty("Chan" + i, () -> getCurrent(chan), null);
+      builder.addDoubleProperty(
+          "Chan" + i, () -> PowerDistributionJNI.getChannelCurrentNoError(m_handle, chan), null);
     }
-    builder.addDoubleProperty("Voltage", this::getVoltage, null);
-    builder.addDoubleProperty("TotalCurrent", this::getTotalCurrent, null);
+    builder.addDoubleProperty(
+        "Voltage", () -> PowerDistributionJNI.getVoltageNoError(m_handle), null);
+    builder.addDoubleProperty(
+        "TotalCurrent", () -> PowerDistributionJNI.getTotalCurrent(m_handle), null);
     builder.addBooleanProperty(
-        "SwitchableChannel", this::getSwitchableChannel, this::setSwitchableChannel);
+        "SwitchableChannel",
+        () -> PowerDistributionJNI.getSwitchableChannelNoError(m_handle),
+        value -> PowerDistributionJNI.setSwitchableChannel(m_handle, value));
   }
 }

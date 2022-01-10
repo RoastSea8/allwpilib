@@ -114,6 +114,11 @@ struct ConditionTraits {
     typedef ::drake::assert::ConditionTraits<                                \
         typename std::remove_cv_t<decltype(condition)>> Trait;               \
     static_assert(Trait::is_valid, "Condition should be bool-convertible."); \
+    static_assert(                                                           \
+        !std::is_pointer_v<decltype(condition)>,                             \
+        "When using DRAKE_DEMAND on a raw pointer, always write out "        \
+        "DRAKE_DEMAND(foo != nullptr), do not write DRAKE_DEMAND(foo) "      \
+        "and rely on implicit pointer-to-bool conversion.");                 \
     if (!Trait::Evaluate(condition)) {                                       \
       ::drake::internal::AssertionFailed(                                    \
            #condition, __func__, __FILE__, __LINE__);                        \
@@ -139,10 +144,16 @@ namespace drake {
 constexpr bool kDrakeAssertIsArmed = false;
 constexpr bool kDrakeAssertIsDisarmed = true;
 }  // namespace drake
-# define DRAKE_ASSERT(condition) static_assert(                        \
-    ::drake::assert::ConditionTraits<                                  \
-        typename std::remove_cv_t<decltype(condition)>>::is_valid,     \
-    "Condition should be bool-convertible.");
+# define DRAKE_ASSERT(condition) do {                                        \
+    typedef ::drake::assert::ConditionTraits<                                \
+        typename std::remove_cv_t<decltype(condition)>> Trait;               \
+    static_assert(Trait::is_valid, "Condition should be bool-convertible."); \
+    static_assert(                                                           \
+        !std::is_pointer_v<decltype(condition)>,                             \
+        "When using DRAKE_ASSERT on a raw pointer, always write out "        \
+        "DRAKE_ASSERT(foo != nullptr), do not write DRAKE_ASSERT(foo) "      \
+        "and rely on implicit pointer-to-bool conversion.");                 \
+  } while (0)
 # define DRAKE_ASSERT_VOID(expression) static_assert(           \
     std::is_convertible_v<decltype(expression), void>,          \
     "Expression should be void.")

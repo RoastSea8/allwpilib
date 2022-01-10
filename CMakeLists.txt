@@ -6,10 +6,16 @@ FATAL: In-source builds are not allowed.
 ")
 endif()
 
+if ("${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Windows")
+    set(CMAKE_SYSTEM_VERSION 10.0.18362.0 CACHE STRING INTERNAL FORCE)
+    set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION 10.0.18362.0 CACHE STRING INTERNAL FORCE)
+endif()
 
 project(allwpilib)
 cmake_minimum_required(VERSION 3.3.0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+
+message(STATUS "Platform version: ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
 
 set(WPILIB_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -119,13 +125,6 @@ FATAL: Cannot build wpilib without wpimath.
 ")
 endif()
 
-if (NOT WITH_OLD_COMMANDS AND WITH_EXAMPLES)
-    message(FATAL_ERROR "
-FATAL: Cannot build examples with old commands disabled.
-       Enable old commands by setting WITH_OLD_COMMANDS=ON
-")
-endif()
-
 set( wpilib_dest wpilib)
 set( include_dest wpilib/include )
 set( main_lib_dest wpilib/lib )
@@ -145,6 +144,8 @@ endif()
 if (USE_VCPKG_EIGEN)
 set (EIGEN_VCPKG_REPLACE "find_package(Eigen3 CONFIG)")
 endif()
+
+find_package(LIBSSH 0.7.1)
 
 if (WITH_FLAT_INSTALL)
 set(WPIUTIL_DEP_REPLACE "include($\{SELF_DIR\}/wpiutil-config.cmake)")
@@ -254,10 +255,14 @@ if (WITH_WPIMATH)
 endif()
 
 if (WITH_GUI)
+    add_subdirectory(fieldImages)
     add_subdirectory(imgui)
     add_subdirectory(wpigui)
     add_subdirectory(glass)
     add_subdirectory(outlineviewer)
+    if (LIBSSH_FOUND)
+        add_subdirectory(roborioteamnumbersetter)
+    endif()
 endif()
 
 if (WITH_WPILIB OR WITH_SIMULATION_MODULES)
@@ -270,19 +275,20 @@ if (WITH_CSCORE)
     set(CAMERASERVER_DEP_REPLACE ${CAMERASERVER_DEP_REPLACE_IMPL})
     add_subdirectory(cscore)
     add_subdirectory(cameraserver)
-    if (WITH_WPILIB)
-        set(WPILIBC_DEP_REPLACE ${WPILIBC_DEP_REPLACE_IMPL})
-        add_subdirectory(wpilibj)
-        add_subdirectory(wpilibc)
-        add_subdirectory(wpilibNewCommands)
-        if (WITH_OLD_COMMANDS)
-            add_subdirectory(wpilibOldCommands)
-        endif()
-        if (WITH_EXAMPLES)
-            add_subdirectory(wpilibcExamples)
-        endif()
-        add_subdirectory(myRobot)
+endif()
+
+if (WITH_WPILIB)
+    set(WPILIBC_DEP_REPLACE ${WPILIBC_DEP_REPLACE_IMPL})
+    add_subdirectory(wpilibj)
+    add_subdirectory(wpilibc)
+    add_subdirectory(wpilibNewCommands)
+    if (WITH_OLD_COMMANDS)
+        add_subdirectory(wpilibOldCommands)
     endif()
+    if (WITH_EXAMPLES)
+        add_subdirectory(wpilibcExamples)
+    endif()
+    add_subdirectory(myRobot)
 endif()
 
 if (WITH_SIMULATION_MODULES AND NOT WITH_EXTERNAL_HAL)
